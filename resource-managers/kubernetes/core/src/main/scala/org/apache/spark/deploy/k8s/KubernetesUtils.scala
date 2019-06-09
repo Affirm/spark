@@ -60,4 +60,32 @@ private[spark] object KubernetesUtils {
   }
 
   def parseMasterUrl(url: String): String = url.substring("k8s://".length)
+
+  /**
+   * Upload a file to a Hadoop-compatible filesystem.
+   */
+  private def uploadFileToHadoopCompatibleFS(
+      src: Path,
+      dest: Path,
+      fs: FileSystem,
+      delSrc : Boolean = false,
+      overwrite: Boolean = true): Unit = {
+    try {
+      fs.copyFromLocalFile(false, true, src, dest)
+    } catch {
+      case e: IOException =>
+        throw new SparkException(s"Error uploading file ${src.getName}", e)
+    }
+  }
+
+  def buildPodWithServiceAccount(serviceAccount: Option[String], pod: SparkPod): Option[Pod] = {
+    serviceAccount.map { account =>
+      new PodBuilder(pod.pod)
+        .editOrNewSpec()
+          .withServiceAccount(account)
+          .withServiceAccountName(account)
+        .endSpec()
+        .build()
+    }
+  }
 }
