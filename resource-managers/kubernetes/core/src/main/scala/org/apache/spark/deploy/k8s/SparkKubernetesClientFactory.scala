@@ -17,16 +17,32 @@
 package org.apache.spark.deploy.k8s
 
 import java.io.File
+import java.io.FileReader
+import java.util.Locale
 
 import com.google.common.base.Charsets
 import com.google.common.io.Files
-import io.fabric8.kubernetes.client.{ConfigBuilder, DefaultKubernetesClient, KubernetesClient}
-import io.fabric8.kubernetes.client.utils.HttpClientUtils
+import io.fabric8.kubernetes.client.{ConfigBuilder, DefaultKubernetesClient, KubernetesClient, OAuthTokenProvider}
+import io.fabric8.kubernetes.client.Config.KUBERNETES_KUBECONFIG_FILE
+import io.fabric8.kubernetes.client.Config.autoConfigure
+import io.fabric8.kubernetes.client.utils.{HttpClientUtils, Utils}
+import io.kubernetes.client.util.FilePersister
+import io.kubernetes.client.util.KubeConfig
 import okhttp3.Dispatcher
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.util.ThreadUtils
+
+private[spark] class SparkOAuthTokenProvider(config: File) extends OAuthTokenProvider {
+  val kubeConfig = KubeConfig.loadKubeConfig(new FileReader(config))
+  val persister = new FilePersister(config)
+  kubeConfig.setPersistConfig(persister)
+
+  def getToken(): String = {
+    return kubeConfig.getAccessToken()
+  }
+}
 
 /**
  * Spark-opinionated builder for Kubernetes clients. It uses a prefix plus common suffixes to
@@ -34,6 +50,37 @@ import org.apache.spark.util.ThreadUtils
  * options for different components.
  */
 private[spark] object SparkKubernetesClientFactory {
+  def getHomeDir(): String = {
+    val osName = System.getProperty("os.name").toLowerCase(Locale.ROOT)
+    if (osName.startsWith("win")) {
+      val homeDrive = System.getenv("HOMEDRIVE")
+      val homePath = System.getenv("HOMEPATH")
+      if (homeDrive != null && !homeDrive.isEmpty() && homePath != null && !homePath.isEmpty()) {
+        val homeDir = homeDrive + homePath
+        val f = new File(homeDir)
+        if (f.exists() && f.isDirectory()) {
+          return homeDir
+        }
+      }
+      val userProfile = System.getenv("USERPROFILE");
+      if (userProfile != null && !userProfile.isEmpty()) {
+        val f = new File(userProfile)
+        if (f.exists() && f.isDirectory()) {
+          return userProfile
+        }
+      }
+    }
+    val home = System.getenv("HOME");
+    if (home != null && !home.isEmpty()) {
+      val f = new File(home)
+      if (f.exists() && f.isDirectory()) {
+        return home
+      }
+    }
+
+    //Fall back to user.home should never really get here
+    return System.getProperty("user.home", ".")
+  }
 
   def createKubernetesClient(
       master: String,
@@ -54,6 +101,16 @@ private[spark] object SparkKubernetesClientFactory {
       s"Cannot specify OAuth token through both a file $oauthTokenFileConf and a " +
         s"value $oauthTokenConf.")
 
+    // Get the kubeconfig file
+    var fileName = Utils.getSystemPropertyOrEnvVar(KUBERNETES_KUBECONFIG_FILE, new File(getHomeDir(), ".kube" + File.separator + "config").toString());
+    // if system property/env var contains multiple files take the first one based on the environment
+    // we are running in (eg. : for Linux, ; for Windows)
+    val fileNames = fileName.split(File.pathSeparator)
+    if (fileNames.length > 1) {
+      fileName = fileNames(0)
+    }
+    val kubeConfigFile = new File(fileName)
+
     val caCertFile = sparkConf
       .getOption(s"$kubernetesAuthConfPrefix.$CA_CERT_FILE_CONF_SUFFIX")
       .orElse(defaultServiceAccountCaCert.map(_.getAbsolutePath))
@@ -63,10 +120,11 @@ private[spark] object SparkKubernetesClientFactory {
       .getOption(s"$kubernetesAuthConfPrefix.$CLIENT_CERT_FILE_CONF_SUFFIX")
     val dispatcher = new Dispatcher(
       ThreadUtils.newDaemonCachedThreadPool("kubernetes-dispatcher"))
-    val config = new ConfigBuilder()
+    val config = new ConfigBuilder(autoConfigure(null))
       .withApiVersion("v1")
       .withMasterUrl(master)
       .withWebsocketPingInterval(0)
+      .withOauthTokenProvider(new SparkOAuthTokenProvider(kubeConfigFile))
       .withOption(oauthTokenValue) {
         (token, configBuilder) => configBuilder.withOauthToken(token)
       }.withOption(oauthTokenFile) {

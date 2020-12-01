@@ -17,4 +17,4 @@
 # limitations under the License.
 
 
-__version__ = "2.4.3.affirm9"
+__version__ = "2.4.3.affirm10"
