@@ -21,7 +21,7 @@ This README file only contains basic setup instructions.
 Spark is built using [Apache Maven](http://maven.apache.org/).
 To build Spark and its example programs, run:
 
-    build/mvn -DskipTests -Phadoop-3.1 -Dhadoop.version=3.1.0 -Dkubernetes.client.version=4.6.2 -Pkubernetes -Daws-java-sdk-bundle.version=1.11.704 clean package
+    build/mvn -DskipTests -Phadoop-3.1 -Dhadoop.version=3.1.3 -Dkubernetes.client.version=4.6.2 -Pkubernetes -Daws-java-sdk-bundle.version=1.11.704 clean package
 
 (You do not need to do this if you downloaded a pre-built package.)
 
