@@ -83,6 +83,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+      <version>30.1-jre</version>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
     <dependency>

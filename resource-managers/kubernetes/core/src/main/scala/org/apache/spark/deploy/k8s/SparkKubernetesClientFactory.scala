@@ -50,6 +50,16 @@ private[spark] class SparkOAuthTokenProvider(config: File) extends OAuthTokenPro
  * options for different components.
  */
 private[spark] object SparkKubernetesClientFactory {
+
+  /**
+   * Check if the code is being run from within kubernetes.
+   * @return
+   */
+  def isOnKubernetes(): Boolean = {
+    val serviceHost = System.getenv("KUBERNETES_SERVICE_HOST")
+    return serviceHost != null && serviceHost.length > 0
+  }
+
   def getHomeDir(): String = {
     val osName = System.getProperty("os.name").toLowerCase(Locale.ROOT)
     if (osName.startsWith("win")) {
@@ -62,7 +72,7 @@ private[spark] object SparkKubernetesClientFactory {
           return homeDir
         }
       }
-      val userProfile = System.getenv("USERPROFILE");
+      val userProfile = System.getenv("USERPROFILE")
       if (userProfile != null && !userProfile.isEmpty()) {
         val f = new File(userProfile)
         if (f.exists() && f.isDirectory()) {
@@ -70,7 +80,7 @@ private[spark] object SparkKubernetesClientFactory {
         }
       }
     }
-    val home = System.getenv("HOME");
+    val home = System.getenv("HOME")
     if (home != null && !home.isEmpty()) {
       val f = new File(home)
       if (f.exists() && f.isDirectory()) {
@@ -101,16 +111,6 @@ private[spark] object SparkKubernetesClientFactory {
       s"Cannot specify OAuth token through both a file $oauthTokenFileConf and a " +
         s"value $oauthTokenConf.")
 
-    // Get the kubeconfig file
-    var fileName = Utils.getSystemPropertyOrEnvVar(KUBERNETES_KUBECONFIG_FILE, new File(getHomeDir(), ".kube" + File.separator + "config").toString());
-    // if system property/env var contains multiple files take the first one based on the environment
-    // we are running in (eg. : for Linux, ; for Windows)
-    val fileNames = fileName.split(File.pathSeparator)
-    if (fileNames.length > 1) {
-      fileName = fileNames(0)
-    }
-    val kubeConfigFile = new File(fileName)
-
     val caCertFile = sparkConf
       .getOption(s"$kubernetesAuthConfPrefix.$CA_CERT_FILE_CONF_SUFFIX")
       .orElse(defaultServiceAccountCaCert.map(_.getAbsolutePath))
@@ -120,25 +120,41 @@ private[spark] object SparkKubernetesClientFactory {
       .getOption(s"$kubernetesAuthConfPrefix.$CLIENT_CERT_FILE_CONF_SUFFIX")
     val dispatcher = new Dispatcher(
       ThreadUtils.newDaemonCachedThreadPool("kubernetes-dispatcher"))
-    val config = new ConfigBuilder(autoConfigure(null))
-      .withApiVersion("v1")
+
+    var builder: ConfigBuilder = new ConfigBuilder()
+    if (!isOnKubernetes()){
+      // Get the kubeconfig file
+      var fileName = Utils.getSystemPropertyOrEnvVar(KUBERNETES_KUBECONFIG_FILE, new File(getHomeDir(), ".kube" + File.separator + "config").toString())
+      // if system property/env var contains multiple files take the first one based on the environment
+      // we are running in (eg. : for Linux, ; for Windows)
+      val fileNames = fileName.split(File.pathSeparator)
+      if (fileNames.length > 1) {
+        fileName = fileNames(0)
+      }
+      val kubeConfigFile = new File(fileName)
+
+      builder = new ConfigBuilder(autoConfigure(null))
+        .withOauthTokenProvider(new SparkOAuthTokenProvider(kubeConfigFile))
+    }
+
+    val config = builder.withApiVersion("v1")
       .withMasterUrl(master)
       .withWebsocketPingInterval(0)
-      .withOauthTokenProvider(new SparkOAuthTokenProvider(kubeConfigFile))
       .withOption(oauthTokenValue) {
         (token, configBuilder) => configBuilder.withOauthToken(token)
       }.withOption(oauthTokenFile) {
-        (file, configBuilder) =>
-            configBuilder.withOauthToken(Files.toString(file, Charsets.UTF_8))
-      }.withOption(caCertFile) {
-        (file, configBuilder) => configBuilder.withCaCertFile(file)
-      }.withOption(clientKeyFile) {
-        (file, configBuilder) => configBuilder.withClientKeyFile(file)
-      }.withOption(clientCertFile) {
-        (file, configBuilder) => configBuilder.withClientCertFile(file)
-      }.withOption(namespace) {
-        (ns, configBuilder) => configBuilder.withNamespace(ns)
-      }.build()
+      (file, configBuilder) =>
+        configBuilder.withOauthToken(Files.toString(file, Charsets.UTF_8))
+    }.withOption(caCertFile) {
+      (file, configBuilder) => configBuilder.withCaCertFile(file)
+    }.withOption(clientKeyFile) {
+      (file, configBuilder) => configBuilder.withClientKeyFile(file)
+    }.withOption(clientCertFile) {
+      (file, configBuilder) => configBuilder.withClientCertFile(file)
+    }.withOption(namespace) {
+      (ns, configBuilder) => configBuilder.withNamespace(ns)
+    }.build()
+
     val baseHttpClient = HttpClientUtils.createHttpClient(config)
     val httpClientWithCustomDispatcher = baseHttpClient.newBuilder()
       .dispatcher(dispatcher)
