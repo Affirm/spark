@@ -73,7 +73,7 @@ with ``pydevd_pycharm.settrace`` to the top of your PySpark script. Suppose the 
     pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
     #========================================================================================
     # Your PySpark application codes:
-    from pyspark.sql import SparkSession
+    from pyspark3.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
     spark.range(10).show()" > app.py
 
@@ -95,7 +95,7 @@ To debug on the executor side, prepare a Python file as below in your current wo
 
 .. code-block:: bash
 
-    echo "from pyspark import daemon, worker
+    echo "from pyspark3 import daemon, worker
     def remote_debug_wrapped(*args, **kwargs):
         #======================Copy and paste from the previous dialog===========================
         import pydevd_pycharm
@@ -180,7 +180,7 @@ You can profile it as below.
 
 .. code-block:: bash
 
-    echo "from pyspark.sql import SparkSession
+    echo "from pyspark3.sql import SparkSession
     #===Your function should be decorated with @profile===
     from memory_profiler import profile
     @profile
@@ -224,7 +224,7 @@ regular Python process unless you are running your driver program in another mac
 
 .. code-block:: bash
 
-    echo "from pyspark.sql import SparkSession
+    echo "from pyspark3.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
     spark.range(10).show()" > app.py
 

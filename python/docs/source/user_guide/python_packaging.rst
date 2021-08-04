@@ -32,8 +32,8 @@ Here is the script ``app.py`` from the previous example that will be executed on
 .. code-block:: python
 
     import pandas as pd
-    from pyspark.sql.functions import pandas_udf
-    from pyspark.sql import SparkSession
+    from pyspark3.sql.functions import pandas_udf
+    from pyspark3.sql import SparkSession
 
     def main(spark):
         df = spark.createDataFrame(
@@ -112,7 +112,7 @@ If you’re on a regular Python shell or notebook, you can try it as shown below
 .. code-block:: python
 
     import os
-    from pyspark.sql import SparkSession
+    from pyspark3.sql import SparkSession
     from app import main
 
     os.environ['PYSPARK_PYTHON'] = "./environment/bin/python"
@@ -169,7 +169,7 @@ For regular Python shells or notebooks:
 .. code-block:: bash
 
     import os
-    from pyspark.sql import SparkSession
+    from pyspark3.sql import SparkSession
     from app import main
 
     os.environ['PYSPARK_PYTHON'] = "./environment/bin/python"
@@ -230,7 +230,7 @@ For regular Python shells or notebooks:
 .. code-block:: python
 
     import os
-    from pyspark.sql import SparkSession
+    from pyspark3.sql import SparkSession
     from app import main
 
     os.environ['PYSPARK_PYTHON'] = "./pyspark_pex_env.pex"
