@@ -36,6 +36,7 @@ checkpoint
 conf/*.cmd
 conf/*.conf
 conf/*.properties
+!conf/log4j.properties
 conf/*.sh
 conf/*.xml
 conf/java-opts
