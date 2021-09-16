@@ -137,7 +137,7 @@ class VectorUDT(UserDefinedType):
 
     @classmethod
     def module(cls):
-        return "pyspark.mllib.linalg"
+        return "pyspark3.mllib.linalg"
 
     @classmethod
     def scalaUDT(cls):
@@ -187,7 +187,7 @@ class MatrixUDT(UserDefinedType):
 
     @classmethod
     def module(cls):
-        return "pyspark.mllib.linalg"
+        return "pyspark3.mllib.linalg"
 
     @classmethod
     def scalaUDT(cls):
