@@ -51,7 +51,7 @@ private[spark] class KubernetesExecutorBuilder(
       Seq(provideVolumesStep(kubernetesConf))
     } else Nil
 
-    val allFeatures = baseFeatures ++ secretFeature ++ secretEnvFeature ++ volumesFeature
+    val allFeatures = baseFeatures ++ secretFeature ++ secretEnvFeature ++ volumesFeature ++ Seq(new ExecutorKubernetesCredentialsFeatureStep(kubernetesConf))
 
     var executorPod = SparkPod.initialPod()
     for (feature <- allFeatures) {
