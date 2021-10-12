@@ -31,7 +31,7 @@ import org.apache.spark.mllib.api.python.SerDeBase
  */
 private[spark] object MLSerDe extends SerDeBase with Serializable {
 
-  override val PYSPARK_PACKAGE = "pyspark.ml"
+  override val PYSPARK_PACKAGE = "pyspark3.ml"
 
   // Pickler for DenseVector
   private[python] class DenseVectorPickler extends BasePickler[DenseVector] {

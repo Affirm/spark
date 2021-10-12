@@ -69,7 +69,7 @@ private[spark] class VectorUDT extends UserDefinedType[Vector] {
     }
   }
 
-  override def pyUDT: String = "pyspark.ml.linalg.VectorUDT"
+  override def pyUDT: String = "pyspark3.ml.linalg.VectorUDT"
 
   override def userClass: Class[Vector] = classOf[Vector]
 

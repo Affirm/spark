@@ -244,7 +244,7 @@ class JavaParams(JavaWrapper, Params, metaclass=ABCMeta):
             for comp in parts[1:]:
                 m = getattr(m, comp)
             return m
-        stage_name = java_stage.getClass().getName().replace("org.apache.spark", "pyspark")
+        stage_name = java_stage.getClass().getName().replace("org.apache.spark", "pyspark3")
         # Generate a default new instance from the stage_name class.
         py_type = __get_class(stage_name)
         if issubclass(py_type, JavaParams):
