@@ -297,7 +297,7 @@ class JavaMLReader(MLReader):
         implementation replaces "pyspark" by "org.apache.spark" in
         the Python full class name.
         """
-        java_package = clazz.__module__.replace("pyspark", "org.apache.spark")
+        java_package = clazz.__module__.replace("pyspark3", "org.apache.spark")
         if clazz.__name__ in ("Pipeline", "PipelineModel"):
             # Remove the last package name "pipeline" for Pipeline and PipelineModel.
             java_package = ".".join(java_package.split(".")[0:-1])
@@ -573,7 +573,7 @@ class DefaultParamsReader(MLReader):
 
     @staticmethod
     def isPythonParamsInstance(metadata):
-        return metadata['class'].startswith('pyspark.ml.')
+        return metadata['class'].startswith('pyspark3.ml.') or metadata['class'].startswith('pyspark.ml')
 
     @staticmethod
     def loadParamsInstance(path, sc):
@@ -584,8 +584,10 @@ class DefaultParamsReader(MLReader):
         metadata = DefaultParamsReader.loadMetadata(path, sc)
         if DefaultParamsReader.isPythonParamsInstance(metadata):
             pythonClassName = metadata['class']
+            if pythonClassName.split('.')[0] == 'pyspark':
+                pythonClassName = pythonClassName.replace("pyspark", "pyspark3")
         else:
-            pythonClassName = metadata['class'].replace("org.apache.spark", "pyspark")
+            pythonClassName = metadata['class'].replace("org.apache.spark", "pyspark3")
         py_type = DefaultParamsReader.__get_class(pythonClassName)
         instance = py_type.load(path)
         return instance
