@@ -213,7 +213,7 @@ object EvaluatePython {
     }
   }
 
-  private val module = "pyspark.sql.types"
+  private val module = "pyspark3.sql.types"
 
   /**
    * Pickler for StructType

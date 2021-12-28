@@ -16,8 +16,7 @@
 # limitations under the License.
 #
 
-# echo commands to the terminal output
-set -ex
+set -e
 
 # Check whether there is a passwd entry for the container UID
 myuid=$(id -u)
@@ -96,10 +95,9 @@ case "$1" in
     ;;
 
   *)
-    echo "Non-spark-on-k8s command provided, proceeding in pass-through mode..."
     CMD=("$@")
     ;;
 esac
 
 # Execute the container CMD under tini for better hygiene
-exec /usr/bin/tini -s -- "${CMD[@]}"
+exec /sbin/tini -s -- "${CMD[@]}"

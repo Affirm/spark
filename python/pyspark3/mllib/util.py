@@ -511,7 +511,7 @@ class JavaLoader(Loader):
         implementation replaces "pyspark" by "org.apache.spark" in
         the Python full class name.
         """
-        java_package = cls.__module__.replace("pyspark", "org.apache.spark")
+        java_package = cls.__module__.replace("pyspark3", "org.apache.spark")
         return ".".join([java_package, cls.__name__])
 
     @classmethod
