@@ -582,6 +582,7 @@ class DefaultParamsReader(MLReader):
         This assumes the instance inherits from :py:class:`MLReadable`.
         """
         metadata = DefaultParamsReader.loadMetadata(path, sc)
+        metadata['class'] = metadata['class'].replace("pyspark3", "pyspark")
         if DefaultParamsReader.isPythonParamsInstance(metadata):
             pythonClassName = metadata['class']
         else:
