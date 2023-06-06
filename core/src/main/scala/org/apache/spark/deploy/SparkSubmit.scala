@@ -324,22 +324,16 @@ private[spark] class SparkSubmit extends Logging {
         // For example we might use the dependencies for downloading
         // files from a Hadoop Compatible fs e.g. S3. In this case the user might pass:
         // --packages com.amazonaws:aws-java-sdk:1.7.4:org.apache.hadoop:hadoop-aws:2.7.6
-        if (isKubernetesCluster) {
+        if (isKubernetesClusterModeDriver) {
+          val loader = getSubmitClassLoader(sparkConf)
+          for (jar <- resolvedMavenCoordinates) {
+            addJarToClasspath(jar, loader)
+          }
+        } else if (isKubernetesCluster) {
           // We need this in K8s cluster mode so that we can upload local deps
           // via the k8s application, like in cluster mode driver
-          childClasspath ++= resolvedMavenCoordinates.split(",")
+          childClasspath ++= resolvedMavenCoordinates
         } else {
-          // In K8s client mode, when in the driver, add resolved jars early as we might need
-          // them at the submit time for artifact downloading.
-          // For example we might use the dependencies for downloading
-          // files from a Hadoop Compatible fs e.g. S3. In this case the user might pass:
-          // --packages com.amazonaws:aws-java-sdk:1.7.4:org.apache.hadoop:hadoop-aws:2.7.6
-          if (isKubernetesClusterModeDriver) {
-            val loader = getSubmitClassLoader(sparkConf)
-            for (jar <- resolvedMavenCoordinates.split(",")) {
-              addJarToClasspath(jar, loader)
-            }
-          }
           args.jars = mergeFileLists(args.jars, mergeFileLists(resolvedMavenCoordinates: _*))
           if (args.isPython || isInternal(args.primaryResource)) {
             args.pyFiles = mergeFileLists(args.pyFiles,
@@ -383,6 +377,7 @@ private[spark] class SparkSubmit extends Logging {
     args.pyFiles = Option(args.pyFiles).map(resolveGlobPaths(_, hadoopConf)).orNull
     args.archives = Option(args.archives).map(resolveGlobPaths(_, hadoopConf)).orNull
 
+    lazy val secMgr = new SecurityManager(sparkConf)
 
     // In client mode, download remote files.
     var localPrimaryResource: String = null
@@ -605,8 +600,7 @@ private[spark] class SparkSubmit extends Logging {
       OptionAssigner(args.deployMode, ALL_CLUSTER_MGRS, ALL_DEPLOY_MODES,
         confKey = SUBMIT_DEPLOY_MODE.key),
       OptionAssigner(args.name, ALL_CLUSTER_MGRS, ALL_DEPLOY_MODES, confKey = "spark.app.name"),
-      OptionAssigner(args.ivyRepoPath, ALL_CLUSTER_MGRS, CLIENT,
-        confKey = JAR_IVY_REPO_PATH.key),
+      OptionAssigner(args.ivyRepoPath, ALL_CLUSTER_MGRS, CLIENT, confKey = "spark.jars.ivy"),
       OptionAssigner(args.driverMemory, ALL_CLUSTER_MGRS, CLIENT,
         confKey = DRIVER_MEMORY.key),
       OptionAssigner(args.driverExtraClassPath, ALL_CLUSTER_MGRS, ALL_DEPLOY_MODES,
@@ -869,12 +863,6 @@ private[spark] class SparkSubmit extends Logging {
       resolvedPyFiles
     }
     sparkConf.set(SUBMIT_PYTHON_FILES, formattedPyFiles.split(",").toSeq)
-
-    if (args.verbose && isSqlShell(childMainClass)) {
-      childArgs ++= Seq("--verbose")
-    }
-
-    sparkConf.set("spark.app.submitTime", System.currentTimeMillis().toString)
 
     (childArgs.toSeq, childClasspath.toSeq, sparkConf, childMainClass)
   }
@@ -1302,12 +1290,6 @@ private[spark] object SparkSubmitUtils extends Logging {
     ivySettings.addResolver(repoResolver)
     ivySettings.setDefaultResolver(repoResolver.getName)
     processRemoteRepoArg(ivySettings, remoteRepos)
-    // (since 2.5) Setting the property ivy.maven.lookup.sources to false
-    // disables the lookup of the sources artifact.
-    // And setting the property ivy.maven.lookup.javadoc to false
-    // disables the lookup of the javadoc artifact.
-    ivySettings.setVariable("ivy.maven.lookup.sources", "false")
-    ivySettings.setVariable("ivy.maven.lookup.javadoc", "false")
     ivySettings
   }
 
@@ -1411,19 +1393,17 @@ private[spark] object SparkSubmitUtils extends Logging {
    * Resolves any dependencies that were supplied through maven coordinates
    * @param coordinates Comma-delimited string of maven coordinates
    * @param ivySettings An IvySettings containing resolvers to use
-   * @param transitive Whether resolving transitive dependencies, default is true
    * @param exclusions Exclusions to apply when resolving transitive dependencies
-   * @return Seq of path to the jars of the given maven artifacts including their
+   * @return The comma-delimited path to the jars of the given maven artifacts including their
    *         transitive dependencies
    */
   def resolveMavenCoordinates(
       coordinates: String,
       ivySettings: IvySettings,
-      transitive: Boolean,
       exclusions: Seq[String] = Nil,
-      isTest: Boolean = false): Seq[String] = {
+      isTest: Boolean = false): String = {
     if (coordinates == null || coordinates.trim.isEmpty) {
-      Nil
+      ""
     } else {
       val sysOut = System.out
       // Default configuration name for ivy
@@ -1473,9 +1453,9 @@ private[spark] object SparkSubmitUtils extends Logging {
           throw new RuntimeException(rr.getAllProblemMessages.toString)
         }
         // retrieve all resolved dependencies
-        retrieveOptions.setDestArtifactPattern(packagesDirectory.getAbsolutePath + File.separator +
-          "[organization]_[artifact]-[revision](-[classifier]).[ext]")
         ivy.retrieve(rr.getModuleDescriptor.getModuleRevisionId,
+          packagesDirectory.getAbsolutePath + File.separator +
+            "[organization]_[artifact]-[revision](-[classifier]).[ext]",
           retrieveOptions.setConfs(Array(ivyConfName)))
         resolveDependencyPaths(rr.getArtifacts.toArray, packagesDirectory)
       } finally {
