@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pyspark3
-Version: 3.1.2+affirm4
+Version: 3.1.2+affirm.dev1
 Summary: Apache Spark Python API
 Home-page: https://github.com/apache/spark/tree/master/python
 Author: Spark Developers
