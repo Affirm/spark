@@ -60,7 +60,7 @@ private[spark] class PythonWorkerFactory(pythonExec: String, envVars: Map[String
         "using this to start the daemon up. Note that this configuration only has an effect when " +
         s"'${PYTHON_USE_DAEMON.key}' is enabled and the platform is not Windows.")
       value
-    }.getOrElse("pyspark3.daemon")
+    }.getOrElse("pyspark.daemon")
 
   // This configuration indicates the module to run each Python worker.
   private val workerModule =
