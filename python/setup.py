@@ -25,16 +25,17 @@ from setuptools.command.install import install
 from shutil import copyfile, copytree, rmtree
 
 try:
-    exec(open('pyspark3/version.py').read())
+    exec(open('pyspark/version.py').read())
 except IOError:
-    print("Failed to load PySpark version file for packaging. You must be in Spark's python dir.", file=sys.stderr)
+    print("Failed to load PySpark version file for packaging. You must be in Spark's python dir.",
+          file=sys.stderr)
     sys.exit(-1)
 try:
-    spec = importlib.util.spec_from_file_location("install", "pyspark3/install.py")
+    spec = importlib.util.spec_from_file_location("install", "pyspark/install.py")
     install_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(install_module)
 except IOError:
-    print("Failed to load the installing module (pyspark3/install.py) which had to be "
+    print("Failed to load the installing module (pyspark/install.py) which had to be "
           "packaged together.",
           file=sys.stderr)
     sys.exit(-1)
@@ -76,6 +77,7 @@ SCRIPTS_PATH = os.path.join(SPARK_HOME, "bin")
 USER_SCRIPTS_PATH = os.path.join(SPARK_HOME, "sbin")
 DATA_PATH = os.path.join(SPARK_HOME, "data")
 LICENSES_PATH = os.path.join(SPARK_HOME, "licenses")
+DOCKER_PATH = os.path.join(SPARK_HOME, "resource-managers/kubernetes/docker/src/main/dockerfiles/spark")
 
 SCRIPTS_TARGET = os.path.join(TEMP_PATH, "bin")
 USER_SCRIPTS_TARGET = os.path.join(TEMP_PATH, "sbin")
@@ -83,7 +85,7 @@ JARS_TARGET = os.path.join(TEMP_PATH, "jars")
 EXAMPLES_TARGET = os.path.join(TEMP_PATH, "examples")
 DATA_TARGET = os.path.join(TEMP_PATH, "data")
 LICENSES_TARGET = os.path.join(TEMP_PATH, "licenses")
-
+DOCKER_TARGET = os.path.join(TEMP_PATH, "k8s")
 # Check and see if we are under the spark path in which case we need to build the symlink farm.
 # This is important because we only want to build the symlink farm while under Spark otherwise we
 # want to use the symlink farm. And if the symlink farm exists under while under Spark (e.g. a
@@ -121,7 +123,7 @@ class InstallCommand(install):
         install.run(self)
 
         # Make sure the destination is always clean.
-        spark_dist = os.path.join(self.install_lib, "pyspark3", "spark-distribution")
+        spark_dist = os.path.join(self.install_lib, "pyspark", "spark-distribution")
         rmtree(spark_dist, ignore_errors=True)
 
         if ("PYSPARK_HADOOP_VERSION" in os.environ) or ("PYSPARK_HIVE_VERSION" in os.environ):
@@ -138,7 +140,7 @@ class InstallCommand(install):
                     (hadoop_version, hive_version))):
                 # Do not download and install if they are same as default.
                 return
-            print('installing spark', spark_dist)
+
             install_module.install_spark(
                 dest=spark_dist,
                 spark_version=spark_version,
@@ -151,11 +153,11 @@ try:
     # find it where expected. The rest of the files aren't copied because they are accessed
     # using Python imports instead which will be resolved correctly.
     try:
-        os.makedirs("pyspark3/python/pyspark3")
+        os.makedirs("pyspark/python/pyspark")
     except OSError:
         # Don't worry if the directory already exists.
         pass
-    copyfile("pyspark3/shell.py", "pyspark3/python/pyspark3/shell.py")
+    copyfile("pyspark/shell.py", "pyspark/python/pyspark/shell.py")
 
     if (in_spark):
         # Construct the symlink farm - this is necessary since we can't refer to the path above the
@@ -167,6 +169,7 @@ try:
             os.symlink(EXAMPLES_PATH, EXAMPLES_TARGET)
             os.symlink(DATA_PATH, DATA_TARGET)
             os.symlink(LICENSES_PATH, LICENSES_TARGET)
+            os.symlink(DOCKER_PATH, DOCKER_TARGET)
         else:
             # For windows fall back to the slower copytree
             copytree(JARS_PATH, JARS_TARGET)
@@ -175,6 +178,7 @@ try:
             copytree(EXAMPLES_PATH, EXAMPLES_TARGET)
             copytree(DATA_PATH, DATA_TARGET)
             copytree(LICENSES_PATH, LICENSES_TARGET)
+            copytree(DOCKER_PATH, DOCKER_TARGET)
     else:
         # If we are not inside of SPARK_HOME verify we have the required symlink farm
         if not os.path.exists(JARS_TARGET):
@@ -190,13 +194,13 @@ try:
     scripts = list(map(lambda script: os.path.join(SCRIPTS_TARGET, script), script_names))
     # We add find_spark_home.py to the bin directory we install so that pip installed PySpark
     # will search for SPARK_HOME with Python.
-    scripts.append("pyspark3/find_spark_home.py")
+    scripts.append("pyspark/find_spark_home.py")
 
     with open('README.md') as f:
         long_description = f.read()
 
     setup(
-        name='pyspark3',
+        name='pyspark',
         version=VERSION,
         description='Apache Spark Python API',
         long_description=long_description,
@@ -204,47 +208,50 @@ try:
         author='Spark Developers',
         author_email='dev@spark.apache.org',
         url='https://github.com/apache/spark/tree/master/python',
-        packages=['pyspark3',
-                  'pyspark3.cloudpickle',
-                  'pyspark3.mllib',
-                  'pyspark3.mllib.linalg',
-                  'pyspark3.mllib.stat',
-                  'pyspark3.ml',
-                  'pyspark3.ml.linalg',
-                  'pyspark3.ml.param',
-                  'pyspark3.sql',
-                  'pyspark3.sql.avro',
-                  'pyspark3.sql.pandas',
-                  'pyspark3.streaming',
-                  'pyspark3.bin',
-                  'pyspark3.sbin',
-                  'pyspark3.jars',
-                  'pyspark3.python.pyspark',
-                  'pyspark3.python.lib',
-                  'pyspark3.data',
-                  'pyspark3.licenses',
-                  'pyspark3.resource',
-                  'pyspark3.examples.src.main.python'],
+        packages=['pyspark',
+                  'pyspark.cloudpickle',
+                  'pyspark.mllib',
+                  'pyspark.mllib.linalg',
+                  'pyspark.mllib.stat',
+                  'pyspark.ml',
+                  'pyspark.ml.linalg',
+                  'pyspark.ml.param',
+                  'pyspark.sql',
+                  'pyspark.sql.avro',
+                  'pyspark.sql.pandas',
+                  'pyspark.streaming',
+                  'pyspark.bin',
+                  'pyspark.sbin',
+                  'pyspark.jars',
+                  'pyspark.k8s',
+                  'pyspark.python.pyspark',
+                  'pyspark.python.lib',
+                  'pyspark.data',
+                  'pyspark.licenses',
+                  'pyspark.resource',
+                  'pyspark.examples.src.main.python'],
         include_package_data=True,
         package_dir={
-            'pyspark3.jars': 'deps/jars',
-            'pyspark3.bin': 'deps/bin',
-            'pyspark3.sbin': 'deps/sbin',
-            'pyspark3.python.lib': 'lib',
-            'pyspark3.data': 'deps/data',
-            'pyspark3.licenses': 'deps/licenses',
-            'pyspark3.examples.src.main.python': 'deps/examples',
+            'pyspark.jars': 'deps/jars',
+            'pyspark.bin': 'deps/bin',
+            'pyspark.k8s': 'deps/k8s',
+            'pyspark.sbin': 'deps/sbin',
+            'pyspark.python.lib': 'lib',
+            'pyspark.data': 'deps/data',
+            'pyspark.licenses': 'deps/licenses',
+            'pyspark.examples.src.main.python': 'deps/examples',
         },
         package_data={
-            'pyspark3.jars': ['*.jar'],
-            'pyspark3.bin': ['*'],
-            'pyspark3.sbin': ['spark-config.sh', 'spark-daemon.sh',
+            'pyspark.jars': ['*.jar'],
+            'pyspark.bin': ['*'],
+            'pyspark.k8s': ['*'],
+            'pyspark.sbin': ['spark-config.sh', 'spark-daemon.sh',
                              'start-history-server.sh',
                              'stop-history-server.sh', ],
-            'pyspark3.python.lib': ['*.zip'],
-            'pyspark3.data': ['*.txt', '*.data'],
-            'pyspark3.licenses': ['*.txt'],
-            'pyspark3.examples.src.main.python': ['*.py', '*/*.py']},
+            'pyspark.python.lib': ['*.zip'],
+            'pyspark.data': ['*.txt', '*.data'],
+            'pyspark.licenses': ['*.txt'],
+            'pyspark.examples.src.main.python': ['*.py', '*/*.py']},
         scripts=scripts,
         license='http://www.apache.org/licenses/LICENSE-2.0',
         # Don't forget to update python/docs/source/getting_started/install.rst
@@ -285,6 +292,7 @@ finally:
             os.remove(os.path.join(TEMP_PATH, "examples"))
             os.remove(os.path.join(TEMP_PATH, "data"))
             os.remove(os.path.join(TEMP_PATH, "licenses"))
+            os.remove(os.path.join(TEMP_PATH, "k8s"))
         else:
             rmtree(os.path.join(TEMP_PATH, "jars"))
             rmtree(os.path.join(TEMP_PATH, "bin"))
@@ -292,4 +300,5 @@ finally:
             rmtree(os.path.join(TEMP_PATH, "examples"))
             rmtree(os.path.join(TEMP_PATH, "data"))
             rmtree(os.path.join(TEMP_PATH, "licenses"))
+            rmtree(os.path.join(TEMP_PATH, "k8s"))
         os.rmdir(TEMP_PATH)

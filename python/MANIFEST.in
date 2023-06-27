@@ -17,10 +17,11 @@
 global-exclude *.py[cod] __pycache__ .DS_Store
 recursive-include deps/jars *.jar
 graft deps/bin
+graft deps/k8s
 recursive-include deps/sbin spark-config.sh spark-daemon.sh start-history-server.sh stop-history-server.sh
 recursive-include deps/data *.data *.txt
 recursive-include deps/licenses *.txt
 recursive-include deps/examples *.py
 recursive-include lib *.zip
-recursive-include pyspark3 *.pyi py.typed
+recursive-include pyspark *.pyi py.typed
 include README.md
