@@ -151,7 +151,7 @@
     <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
-    <aws.java.sdk.version>1.11.655</aws.java.sdk.version>
+    <aws.java.sdk.version>1.11.1026</aws.java.sdk.version>
     <!-- the producer is used in tests -->
     <aws.kinesis.producer.version>0.12.8</aws.kinesis.producer.version>
     <!--  org.apache.httpcomponents/httpclient-->
@@ -258,6 +258,7 @@
     <CodeCacheSize>1g</CodeCacheSize>
     <!-- Needed for consistent times -->
     <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss z</maven.build.timestamp.format>
+    <software.aws.sdk.version>2.20.83</software.aws.sdk.version>
   </properties>
   <repositories>
     <repository>
@@ -384,10 +385,46 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-bundle</artifactId>
+      <version>${aws.java.sdk.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>bundle</artifactId>
-      <version>2.20.83</version>
-    </dependency>    
+      <artifactId>apache-client</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>kms</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>glue</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sts</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>dynamodb</artifactId>
+      <version>${software.aws.sdk.version}</version>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>
