@@ -277,10 +277,6 @@
       </snapshots>
     </repository>
     <repository>
-      <id>tabular-releases</id>
-      <url>https://tabular-repository-public.s3.amazonaws.com/releases</url>
-    </repository>
-    <repository>
       <!--
         This is used as a fallback when the first try fails.
       -->
