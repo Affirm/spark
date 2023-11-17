@@ -325,10 +325,6 @@
       </snapshots>
     </repository>
     <repository>
-      <id>tabular-releases</id>
-      <url>https://tabular-repository-public.s3.amazonaws.com/releases</url>
-    </repository>
-    <repository>
       <!--
         This is used as a fallback when the first try fails.
       -->
@@ -441,6 +437,11 @@
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-aws-bundle</artifactId>
       <version>1.4.2</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.27</version>
     </dependency>
   </dependencies>
   <dependencyManagement>
