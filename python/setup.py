@@ -255,6 +255,7 @@ try:
             "pyspark.bin",
             "pyspark.k8s",
             "pyspark.sbin",
+            "pyspark.k8s",
             "pyspark.jars",
             "pyspark.pandas",
             "pyspark.pandas.data_type_ops",
