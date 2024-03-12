@@ -253,6 +253,7 @@ try:
             "pyspark.sql.streaming",
             "pyspark.streaming",
             "pyspark.bin",
+            "pyspark.k8s",
             "pyspark.sbin",
             "pyspark.jars",
             "pyspark.pandas",
