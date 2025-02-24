@@ -121,6 +121,7 @@
     <asm.version>9.5</asm.version>
     <slf4j.version>2.0.7</slf4j.version>
     <log4j.version>2.20.0</log4j.version>
+    <iceberg.version>1.8.0</iceberg.version>
     <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
     <hadoop.version>3.3.4</hadoop.version>
     <!-- SPARK-41247: When updating `protobuf.version`, also need to update `protoVersion` in `SparkBuild.scala` -->
@@ -436,13 +437,13 @@
     <dependency>
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-spark-runtime-3.5_2.12</artifactId>
-      <version>1.8.0</version>
+      <version>${iceberg.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-aws-bundle</artifactId>
-      <version>1.7.1</version>
+      <version>${iceberg.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
