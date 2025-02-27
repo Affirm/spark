@@ -436,6 +436,11 @@
       <version>1.6.1</version>
       <scope>runtime</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-aws-bundle</artifactId>
+      <version>1.6.1</version>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>
