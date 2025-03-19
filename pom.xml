@@ -438,8 +438,9 @@
     </dependency>
     <dependency>
       <groupId>org.apache.iceberg</groupId>
-      <artifactId>iceberg-aws-bundle</artifactId>
+      <artifactId>iceberg-aws</artifactId>
       <version>1.6.1</version>
+      <scope>runtime</scope>
     </dependency>
   </dependencies>
   <dependencyManagement>
