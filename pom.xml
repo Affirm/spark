@@ -451,6 +451,25 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+      <!--
+        ADD THIS: AWS SDK v2 HTTP client for Hadoop 3.4 IRSA support
+
+        Hadoop 3.4 upgraded to AWS SDK v2 but doesn't include WebIdentityTokenFileCredentialsProvider
+        in the default S3A credential chain (fixed in Hadoop 3.5.0 via HADOOP-19535).
+
+        For IRSA (IAM Roles for Service Accounts) in EKS, we explicitly configure
+        WebIdentityTokenFileCredentialsProvider, which requires an HTTP client to make STS API calls.
+
+        This dependency provides the UrlConnectionHttpClient implementation needed by
+        WebIdentityTokenFileCredentialsProvider to assume roles via STS AssumeRoleWithWebIdentity.
+
+        Remove when upgrading to Hadoop 3.5+ or Spark 4.x with Hadoop 3.5+.
+      -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+      <version>2.29.52</version>
+    </dependency>
     <dependency>
       <groupId>com.github.sbt.junit</groupId>
       <artifactId>jupiter-interface</artifactId>
