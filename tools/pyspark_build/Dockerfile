@@ -9,9 +9,9 @@ ARG JAVA_VERSION=17
 # Java >=17 required for Spark 4.x compilation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-${JAVA_VERSION}-jdk-headless \
-    git=1:2.34.1-1ubuntu1.17 \
-    curl=7.81.0-1ubuntu1.23 \
-    wget=1.21.2-2ubuntu1.1 \
+    git \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Python tooling for building and uploading wheels
