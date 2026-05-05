@@ -49,3 +49,19 @@ Example section:
 ---
 
 <!-- Add new productive releases below, newest first. -->
+
+## 1
+
+**Spark version:** 4.0.0
+**Commit SHA:** 8cccafb5f8367c2f4c360684f3a1f5b9142550e6
+
+**Changes:**
+- Bumped Java/Scala target from 17 to 21 (`pom.xml`, scalac `-release` flag).
+- Disabled the upstream Kafka connector modules (`connector/kafka-0-10*`); Affirm does not run Spark-on-Kafka.
+- Bundled OpenLineage (`io.openlineage:openlineage-spark` 1.38.0) and `kafka-clients` (3.9.0) into the assembly so all Spark apps get lineage tracking out of the box.
+- Added AWS SDK v2 `url-connection-client` (2.29.52) to support IRSA / `WebIdentityTokenFileCredentialsProvider` on Hadoop 3.4 (workaround until Hadoop 3.5 / HADOOP-19535).
+- Added Iceberg runtime for Spark 4.0 / Scala 2.13 and `iceberg-aws-bundle` (1.10.1), plus an explicit `hadoop-aws` dependency pinned to `${hadoop.version}`.
+- Added MySQL JDBC driver (`com.mysql:mysql-connector-j` 9.2.0, runtime scope).
+- Packaged the Kubernetes Spark Dockerfiles into the wheel as `pyspark.k8s` (`MANIFEST.in` graft, `setup.py` symlink/copy/package wiring).
+- `entrypoint.sh`: export `SPARK_VERSION=4.0.0` and switch tini path from `/usr/bin/tini` to `/tini` to match the Affirm base image.
+- Added `venv/` to `python/.gitignore`.
