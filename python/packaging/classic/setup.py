@@ -19,6 +19,7 @@
 import importlib.util
 import glob
 import os
+import subprocess
 import sys
 import ctypes
 from setuptools import setup
@@ -105,6 +106,7 @@ SCRIPTS_PATH = os.path.join(SPARK_HOME, "bin")
 USER_SCRIPTS_PATH = os.path.join(SPARK_HOME, "sbin")
 DATA_PATH = os.path.join(SPARK_HOME, "data")
 LICENSES_PATH = os.path.join(SPARK_HOME, "licenses")
+DOCKER_PATH = os.path.join(SPARK_HOME, "resource-managers/kubernetes/docker/src/main/dockerfiles/spark")
 
 SCRIPTS_TARGET = os.path.join(TEMP_PATH, "bin")
 USER_SCRIPTS_TARGET = os.path.join(TEMP_PATH, "sbin")
@@ -112,6 +114,7 @@ JARS_TARGET = os.path.join(TEMP_PATH, "jars")
 EXAMPLES_TARGET = os.path.join(TEMP_PATH, "examples")
 DATA_TARGET = os.path.join(TEMP_PATH, "data")
 LICENSES_TARGET = os.path.join(TEMP_PATH, "licenses")
+DOCKER_TARGET = os.path.join(TEMP_PATH, "k8s")
 
 # Check and see if we are under the spark path in which case we need to build the symlink farm.
 # This is important because we only want to build the symlink farm while under Spark otherwise we
@@ -221,6 +224,7 @@ try:
             os.symlink(EXAMPLES_PATH, EXAMPLES_TARGET)
             os.symlink(DATA_PATH, DATA_TARGET)
             os.symlink(LICENSES_PATH, LICENSES_TARGET)
+            os.symlink(DOCKER_PATH, DOCKER_TARGET)
         else:
             # For windows fall back to the slower copytree
             copytree(JARS_PATH, JARS_TARGET)
@@ -229,6 +233,61 @@ try:
             copytree(EXAMPLES_PATH, EXAMPLES_TARGET)
             copytree(DATA_PATH, DATA_TARGET)
             copytree(LICENSES_PATH, LICENSES_TARGET)
+            copytree(DOCKER_PATH, DOCKER_TARGET)
+
+        # Verify every AWS SDK v2 JAR in the wheel's jars/ — both standalone
+        # software.amazon.awssdk:* JARs and the AWS SDK classes embedded inside
+        # iceberg-aws-bundle — is at a single, consistent version. Fails the wheel
+        # build if any drift is detected. See PYSPARK_PY312_ISSUE.md / BATCH-4042.
+        #
+        # This MUST only run at distribution-build time, never at wheel-install
+        # time. Two protections:
+        #   (a) `in_spark` (we're already inside this branch) is False whenever
+        #       someone is installing pyspark from a pre-built wheel or sdist —
+        #       there's no Spark source tree available to check against.
+        #   (b) the sys.argv guard below limits invocation to the commands that
+        #       actually produce a distribution artifact (sdist, bdist, wheel
+        #       builds). Read-only invocations like egg_info, dist_info, check,
+        #       --help, and pip's metadata-collection phase do not run the
+        #       audit, so they cannot fail builds spuriously.
+        _BUILD_COMMANDS = {
+            "sdist",
+            "bdist",
+            "bdist_wheel",
+            "bdist_egg",
+            "bdist_dumb",
+            "build",
+            "build_py",
+        }
+        _is_build_invocation = any(cmd in sys.argv for cmd in _BUILD_COMMANDS)
+        if _is_build_invocation:
+            aws_sdk_audit_script = os.path.join(SPARK_HOME, "dev", "check-aws-sdk-jars.sh")
+            if os.path.isfile(aws_sdk_audit_script):
+                print(
+                    "Running AWS SDK v2 JAR consistency audit against {0}".format(JARS_TARGET)
+                )
+                try:
+                    subprocess.run(
+                        [aws_sdk_audit_script, JARS_TARGET],
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(
+                        "AWS SDK v2 JAR audit failed (exit code {0}). "
+                        "Refusing to build a wheel with inconsistent AWS SDK versions; "
+                        "see PYSPARK_PY312_ISSUE.md.".format(e.returncode),
+                        file=sys.stderr,
+                    )
+                    sys.exit(e.returncode)
+            else:
+                print(
+                    "WARNING: AWS SDK v2 JAR audit script not found at {0}; "
+                    "skipping consistency check. This is unexpected in a normal Spark "
+                    "source checkout — verify dev/check-aws-sdk-jars.sh is present.".format(
+                        aws_sdk_audit_script
+                    ),
+                    file=sys.stderr,
+                )
     else:
         # If we are not inside of SPARK_HOME verify we have the required symlink farm
         if not os.path.exists(JARS_TARGET):
@@ -296,6 +355,7 @@ try:
             "pyspark.streaming",
             "pyspark.bin",
             "pyspark.sbin",
+            "pyspark.k8s",
             "pyspark.jars",
             "pyspark.pandas",
             "pyspark.pandas.data_type_ops",
@@ -321,6 +381,7 @@ try:
             "pyspark.jars": "deps/jars",
             "pyspark.bin": "deps/bin",
             "pyspark.sbin": "deps/sbin",
+            "pyspark.k8s": "deps/k8s",
             "pyspark.python.lib": "lib",
             "pyspark.data": "deps/data",
             "pyspark.licenses": "deps/licenses",
@@ -329,6 +390,7 @@ try:
         package_data={
             "pyspark.jars": ["*.jar"],
             "pyspark.bin": ["*"],
+            "pyspark.k8s": ["*"],
             "pyspark.sbin": [
                 "spark-config.sh",
                 "spark-daemon.sh",
@@ -398,6 +460,7 @@ finally:
             os.remove(os.path.join(TEMP_PATH, "examples"))
             os.remove(os.path.join(TEMP_PATH, "data"))
             os.remove(os.path.join(TEMP_PATH, "licenses"))
+            os.remove(os.path.join(TEMP_PATH, "k8s"))
         else:
             rmtree(os.path.join(TEMP_PATH, "jars"))
             rmtree(os.path.join(TEMP_PATH, "bin"))
@@ -405,4 +468,5 @@ finally:
             rmtree(os.path.join(TEMP_PATH, "examples"))
             rmtree(os.path.join(TEMP_PATH, "data"))
             rmtree(os.path.join(TEMP_PATH, "licenses"))
+            rmtree(os.path.join(TEMP_PATH, "k8s"))
         os.rmdir(TEMP_PATH)
