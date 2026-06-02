@@ -146,6 +146,41 @@
       <artifactId>bcprov-jdk18on</artifactId>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
+
+    <!--
+      OpenLineage and Kafka dependencies for Affirm custom distribution.
+      These are bundled into /opt/spark/jars/ so all Spark applications have lineage tracking.
+
+      Both deps are excluded from pulling software.amazon.awssdk:bundle as a transitive
+      dep — they bundle AWS SDK at the version they were built against (openlineage 1.38.0
+      → 2.24.6, kafka-clients 3.9.0 may also pull older AWS SDK indirectly). The
+      dependencyManagement bundle pin in the root pom is supposed to handle this,
+      but BOM management for bundle has empirically been unreliable in this dep graph
+      (see BATCH-4042 dev17 build where bundle-2.24.6.jar landed despite the BOM).
+      Explicit exclusions are defense-in-depth.
+    -->
+    <dependency>
+      <groupId>io.openlineage</groupId>
+      <artifactId>openlineage-spark_${scala.binary.version}</artifactId>
+      <version>${openlineage.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>
