@@ -86,6 +86,26 @@
           <groupId>org.wildfly.openssl</groupId>
           <artifactId>wildfly-openssl</artifactId>
         </exclusion>
+        <!--
+          Explicitly exclude hadoop-aws's transitive software.amazon.awssdk:bundle:2.24.6
+          (and any other modular AWS SDK v2 artifact it pulls in) so that nothing but our
+          own directly-declared software.amazon.awssdk:bundle:${aws.java.sdk.v2.version}
+          dependency below contributes to the assembled `pyspark/jars/` set.
+
+          Why this is needed even though the BOM at spark-parent/<dependencyManagement>
+          already pins every software.amazon.awssdk:* artifact to ${aws.java.sdk.v2.version}:
+          empirically, dev16 wheels were observed shipping BOTH bundle-2.24.6.jar AND the
+          intended bundle-${aws.java.sdk.v2.version}.jar in pyspark/jars/. This either means
+          the BOM didn't take effect at build time (unstaged-pom case during incremental
+          builds is one suspect), or the assembly's copy-dependencies plugin pulled the
+          transitive bundle independently of the resolved dependency tree. Either way,
+          excluding it at the source removes the ambiguity. See PYSPARK_PY312_ISSUE.md /
+          BATCH-4042.
+        -->
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>

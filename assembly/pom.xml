@@ -146,6 +146,108 @@
       <artifactId>bcprov-jdk18on</artifactId>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
+
+    <!--
+      OpenLineage and Kafka dependencies for Affirm custom distribution.
+      These are bundled into /opt/spark/jars/ so all Spark applications have lineage tracking.
+
+      Both deps are excluded from pulling software.amazon.awssdk:bundle as a transitive
+      dep — they bundle AWS SDK at the version they were built against (openlineage 1.38.0
+      → 2.24.6, kafka-clients 3.9.0 may also pull older AWS SDK indirectly). The
+      dependencyManagement bundle pin in the root pom is supposed to handle this,
+      but BOM management for bundle has empirically been unreliable in this dep graph
+      (see BATCH-4042 dev17 build where bundle-2.24.6.jar landed despite the BOM).
+      Explicit exclusions are defense-in-depth.
+    -->
+    <dependency>
+      <groupId>io.openlineage</groupId>
+      <artifactId>openlineage-spark_${scala.binary.version}</artifactId>
+      <version>${openlineage.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!--
+      Explicit declaration of the AWS SDK v2 uber-jar at the version pinned in the root pom.
+
+      Why this is needed:
+      - hadoop-aws-3.4.1's S3A connector uses S3 Transfer Manager v2 (classes under
+        software.amazon.awssdk.transfer.s3.*) during S3 client construction. Without
+        these classes on the classpath, `JavaSparkContext.<init>` fails at runtime with
+        `NoClassDefFoundError: software/amazon/awssdk/transfer/s3/model/ObjectTransfer`.
+      - iceberg-aws-bundle-1.10.1 bundles a subset of AWS SDK v2 modules (s3, regions,
+        auth, etc.) but does NOT include the s3-transfer-manager module.
+      - hadoop-aws's transitive bundle:2.24.6 is excluded everywhere as part of BATCH-4042
+        because it caused a multi-version classpath bug. With it gone, nothing else
+        contributes a bundle uber-jar to the wheel — including the s3-transfer-manager
+        classes that Hadoop's S3A connector requires.
+      - Declaring bundle:${aws.java.sdk.v2.version} directly here brings in a clean,
+        single-version (2.33.0) AWS SDK uber-jar that includes every sub-module,
+        including transfer-manager. Co-resident with iceberg-aws-bundle-1.10.1 (also
+        at AWS SDK 2.33.0), there's no cross-version drift possible.
+
+      The empty `<exclusions>` block ensures we get only the uber-jar bytes itself with
+      no extra transitive deps (matching the pattern hadoop-cloud uses).
+
+      See PYSPARK_PY312_ISSUE.md / BATCH-4042.
+    -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>bundle</artifactId>
+      <version>${aws.java.sdk.v2.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!--
+      INC-6440 / BATCH-4042: bundle spark-hadoop-cloud into the distribution by default so
+      the S3A magic committer classes (org.apache.spark.internal.io.cloud.
+      PathOutputCommitProtocol / BindingParquetOutputCommitter) are always on the
+      pyspark/jars/ classpath. Moved here from the (now no-op) hadoop-cloud profile below
+      because -Phadoop-cloud is not passed by every build invocation.
+
+      The software.amazon.awssdk:bundle exclusion matches the defense-in-depth pattern used
+      for openlineage / kafka-clients above: spark-hadoop-cloud pulls hadoop-aws
+      transitively, which would otherwise drag bundle:2.24.6 back into the wheel (the exact
+      multi-version classpath bug from BATCH-4042). The single clean bundle:${aws.java.sdk.v2.version}
+      declared above remains the only AWS SDK uber-jar. See PYSPARK_PY312_ISSUE.md / BATCH-4042.
+    -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-hadoop-cloud_${scala.binary.version}</artifactId>
+      <version>${project.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Redeclare so jetty-util is forced into the distribution. -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-util</artifactId>
+      <scope>${hadoop.deps.scope}</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -364,25 +466,13 @@
     </profile>
 
     <!--
-     Pull in spark-hadoop-cloud and its associated JARs,
+      INC-6440 / BATCH-4042: spark-hadoop-cloud (and its jetty-util redeclare) are now in
+      the main <dependencies> above so they are always bundled into the distribution
+      without -Phadoop-cloud. This profile is retained as a no-op for backward
+      compatibility with build invocations that still pass -Phadoop-cloud.
     -->
     <profile>
       <id>hadoop-cloud</id>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>spark-hadoop-cloud_${scala.binary.version}</artifactId>
-          <version>${project.version}</version>
-        </dependency>
-        <!--
-        Redeclare this dependency to force it into the distribution.
-        -->
-        <dependency>
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-util</artifactId>
-          <scope>${hadoop.deps.scope}</scope>
-        </dependency>
-      </dependencies>
     </profile>
   </profiles>
 </project>
