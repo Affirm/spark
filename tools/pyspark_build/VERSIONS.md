@@ -50,6 +50,16 @@ Example section:
 
 <!-- Add new productive releases below, newest first. -->
 
+## 3
+
+**Spark version:** 4.0.0
+**Commit SHA:** ae0b681291fa868be80d84aa417eb6326ebcb2a5
+
+**Changes:**
+- Bundled the Snowflake Spark connector `net.snowflake:spark-snowflake_${scala.binary.version}:3.1.3` and the matching JDBC driver `net.snowflake:snowflake-jdbc:3.8.0` into the assembly, so `pyspark/jars/` ships the `net.snowflake.spark.snowflake.DefaultSource` datasource and `net.snowflake.client.jdbc.SnowflakeDriver` without needing `spark.jars.packages` at submit time.
+- Both Snowflake deps are declared with **`<scope>runtime</scope>`**. `snowflake-jdbc` *requires* the explicit scope: the root pom's `<dependencyManagement>` manages `net.snowflake:snowflake-jdbc` at `${snowflake.jdbc.version}` (3.22.0) with `<scope>test</scope>` (for the upstream `SnowflakeDialect` tests in `sql/core`), so omitting the scope would inherit `test` and exclude the jar from the wheel. `spark-snowflake` has no managed entry (defaults to `compile`) and is set to `runtime` for symmetry/intent.
+- Pinned `snowflake-jdbc` to `3.8.0` (overriding the managed 3.22.0) to match the version validated against the Snowflake account, and excluded the transitive `snowflake-jdbc` pulled in by `spark-snowflake` so the pinned 3.8.0 driver is the only JDBC jar in the wheel.
+
 ## 2
 
 **Spark version:** 4.0.0
