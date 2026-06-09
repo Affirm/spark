@@ -50,6 +50,19 @@ Example section:
 
 <!-- Add new productive releases below, newest first. -->
 
+## 2
+
+**Spark version:** 4.0.0
+**Commit SHA:** 9ed48fd56fff8b729be7b0921ca600f09ca55e37
+
+**Changes:**
+- Bumped AWS SDK v2 to `2.33.0` (from `2.25.53`); `url-connection-client` now tracks `${aws.java.sdk.v2.version}` instead of a hardcoded `2.29.52`.
+- Build the `hadoop-cloud` module by default (added to the root `<modules>`) and moved `spark-hadoop-cloud` + the `jetty-util` redeclare into the assembly's main `<dependencies>`, so the S3A **magic committer** classes (`org.apache.spark.internal.io.cloud.PathOutputCommitProtocol` / `BindingParquetOutputCommitter`) always ship in `pyspark/jars/` without needing `-Phadoop-cloud`. Both `hadoop-cloud` profiles (root + assembly) kept as no-ops for back-compat.
+- Enforce a single AWS SDK v2 version across the wheel: import the AWS SDK v2 BOM and add an explicit `software.amazon.awssdk:bundle` pin in `dependencyManagement`; exclude the stale transitive `bundle` (2.24.6) from `hadoop-aws` (root pom **and** `hadoop-cloud/pom.xml`), `iceberg-spark-runtime-4.0`, `openlineage-spark`, `kafka-clients`, and `spark-hadoop-cloud`.
+- Declare one clean `software.amazon.awssdk:bundle:2.33.0` uber-jar (with `*:*` exclusion) in the assembly as the sole AWS SDK jar — it provides the S3 Transfer Manager classes `hadoop-aws` 3.4.1 needs (absent from `iceberg-aws-bundle`).
+- Added `dev/check-aws-sdk-jars.sh` and wired it into `setup.py`: the wheel build now **fails** if any AWS SDK v2 jar — standalone `software.amazon.awssdk:*` or the version embedded inside `iceberg-aws-bundle` — drifts from a single consistent version.
+- Documented the `iceberg.version` ↔ `aws.java.sdk.v2.version` lockstep invariant (iceberg 1.10.x → AWS SDK v2 2.33.0).
+
 ## 1
 
 **Spark version:** 4.0.0
