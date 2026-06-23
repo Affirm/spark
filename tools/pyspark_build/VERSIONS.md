@@ -50,6 +50,14 @@ Example section:
 
 <!-- Add new productive releases below, newest first. -->
 
+## 4
+
+**Spark version:** 4.0.0
+**Commit SHA:** e601b2c73b4d670a051d6b251ffbac272774b15c
+
+**Changes:**
+- Bumped `snowflake-jdbc` from `3.8.0` to `3.24.2`. `spark-snowflake` 3.1.3 references `net.snowflake.client.jdbc.SnowflakeLoggedFeatureNotSupportedException`, which was introduced in `snowflake-jdbc` 3.13; the 3.8.0 driver bundled in `pyspark/jars/` was becoming a system jar that won the classloader race over any `spark.jars.packages`-resolved driver, causing `NoClassDefFoundError` at runtime. `3.24.2` is the version Ivy resolved and successfully ran before bundling.
+
 ## 3
 
 **Spark version:** 4.0.0
