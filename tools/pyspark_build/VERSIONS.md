@@ -50,6 +50,14 @@ Example section:
 
 <!-- Add new productive releases below, newest first. -->
 
+## 5
+
+**Spark version:** 4.0.0
+**Commit SHA:** b3dbab24fac7db0f09ceb70f4b7f134570eda246
+
+**Changes:**
+- Relaxed the `py4j` dependency constraint from `==0.10.9.9` to a range `>=0.10.9.7,<0.10.9.10` in `python/packaging/classic/setup.py`, `dev/requirements.txt`, and `python/docs/source/getting_started/install.rst`.
+
 ## 4
 
 **Spark version:** 4.0.0
