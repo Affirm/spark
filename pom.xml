@@ -166,7 +166,7 @@
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>3.9.0</kafka.version>
     <!-- OpenLineage for Spark lineage tracking - bundled in Affirm custom distribution -->
-    <openlineage.version>1.38.0</openlineage.version>
+    <openlineage.version>1.49.0</openlineage.version>
     <!-- After 10.17.1.0, the minimum required version is JDK19 -->
     <derby.version>10.16.1.1</derby.version>
     <parquet.version>1.15.2</parquet.version>
