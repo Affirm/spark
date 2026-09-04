@@ -148,9 +148,10 @@
 
       iceberg-aws-bundle version -> embedded AWS SDK v2 version
         1.10.x  -> 2.33.0
+        1.11.x  -> 2.44.4  (Affirm fork 1.11.0-PATCH.1; from iceberg gradle/libs.versions.toml awssdk-bom)
         (consult iceberg release notes for other versions; the audit script verifies empirically)
     -->
-    <iceberg.version>1.10.1</iceberg.version>
+    <iceberg.version>1.11.0-PATCH.1</iceberg.version>
     <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
     <hadoop.version>3.4.1</hadoop.version>
     <!-- SPARK-41247: When updating `protobuf.version`, also need to update `protoVersion` in `SparkBuild.scala` -->
@@ -165,7 +166,7 @@
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>3.9.0</kafka.version>
     <!-- OpenLineage for Spark lineage tracking - bundled in Affirm custom distribution -->
-    <openlineage.version>1.38.0</openlineage.version>
+    <openlineage.version>1.49.0</openlineage.version>
     <!-- After 10.17.1.0, the minimum required version is JDK19 -->
     <derby.version>10.16.1.1</derby.version>
     <parquet.version>1.15.2</parquet.version>
@@ -189,7 +190,7 @@
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
     <aws.java.sdk.version>1.11.655</aws.java.sdk.version>
-    <aws.java.sdk.v2.version>2.33.0</aws.java.sdk.v2.version>
+    <aws.java.sdk.v2.version>2.44.4</aws.java.sdk.v2.version>
     <!-- the producer is used in tests -->
     <aws.kinesis.producer.version>0.12.8</aws.kinesis.producer.version>
     <!-- Do not use 3.0.0: https://github.com/GoogleCloudDataproc/hadoop-connectors/issues/1114 -->
