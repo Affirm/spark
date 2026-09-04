@@ -102,19 +102,28 @@
     <module>examples</module>
     <module>repl</module>
     <module>launcher</module>
+    <!-- Disable Kafka connector modules because we are not using Spark with Kafka at Affirm -->
+    <!--
     <module>connector/kafka-0-10-token-provider</module>
     <module>connector/kafka-0-10</module>
     <module>connector/kafka-0-10-assembly</module>
     <module>connector/kafka-0-10-sql</module>
+    -->
     <module>connector/avro</module>
     <module>connector/protobuf</module>
+    <!-- INC-6440 / BATCH-4042: build hadoop-cloud by default so spark-hadoop-cloud
+         (org.apache.spark.internal.io.cloud.PathOutputCommitProtocol /
+         BindingParquetOutputCommitter, required by the S3A magic committer) is always
+         available without needing -Phadoop-cloud, which is not threaded through every
+         build invocation. The hadoop-cloud profile below is retained as a no-op. -->
+    <module>hadoop-cloud</module>
     <!-- See additional modules enabled by profiles below -->
   </modules>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <java.version>17</java.version>
+    <java.version>21</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <maven.version>3.9.9</maven.version>
     <exec-maven-plugin.version>3.2.0</exec-maven-plugin.version>
@@ -122,6 +131,26 @@
     <asm.version>9.7.1</asm.version>
     <slf4j.version>2.0.16</slf4j.version>
     <log4j.version>2.24.3</log4j.version>
+    <!--
+      INVARIANT: iceberg.version and aws.java.sdk.v2.version MUST ship the same AWS SDK v2 version.
+
+      iceberg-aws-bundle is a fat-jar that embeds AWS SDK v2 classes internally; the version it
+      embeds is determined by the Iceberg release, not by Maven dependency resolution. If this
+      embedded version drifts from the standalone software.amazon.awssdk:bundle version, the
+      pyspark wheel will ship two copies of the AWS SDK at different versions and the JVM will
+      load each class from whichever JAR is alphabetically first on the classpath — which can
+      mix AWS SDK 2.X with hadoop-aws bytecode compiled against 2.Y, producing NoSuchMethodError
+      at runtime (see PYSPARK_PY312_ISSUE.md / BATCH-4042).
+
+      Whenever you bump one of these two properties, you MUST also bump the other so they stay
+      in lockstep. The build-time audit at dev/check-aws-sdk-jars.sh enforces this by inspecting
+      the AWS SDK version embedded inside iceberg-aws-bundle and failing the build on mismatch.
+
+      iceberg-aws-bundle version -> embedded AWS SDK v2 version
+        1.10.x  -> 2.33.0
+        (consult iceberg release notes for other versions; the audit script verifies empirically)
+    -->
+    <iceberg.version>1.10.1</iceberg.version>
     <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
     <hadoop.version>3.4.1</hadoop.version>
     <!-- SPARK-41247: When updating `protobuf.version`, also need to update `protoVersion` in `SparkBuild.scala` -->
@@ -135,6 +164,8 @@
     <hive.version>2.3.10</hive.version>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>3.9.1</kafka.version>
+    <!-- OpenLineage for Spark lineage tracking - bundled in Affirm custom distribution -->
+    <openlineage.version>1.38.0</openlineage.version>
     <!-- After 10.17.1.0, the minimum required version is JDK19 -->
     <derby.version>10.16.1.1</derby.version>
     <parquet.version>1.15.2</parquet.version>
@@ -158,7 +189,7 @@
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
     <aws.java.sdk.version>1.11.655</aws.java.sdk.version>
-    <aws.java.sdk.v2.version>2.25.53</aws.java.sdk.v2.version>
+    <aws.java.sdk.v2.version>2.33.0</aws.java.sdk.v2.version>
     <!-- the producer is used in tests -->
     <aws.kinesis.producer.version>0.12.8</aws.kinesis.producer.version>
     <!-- Do not use 3.0.0: https://github.com/GoogleCloudDataproc/hadoop-connectors/issues/1114 -->
@@ -445,14 +476,118 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+      <!--
+        ADD THIS: AWS SDK v2 HTTP client for Hadoop 3.4 IRSA support
+
+        Hadoop 3.4 upgraded to AWS SDK v2 but doesn't include WebIdentityTokenFileCredentialsProvider
+        in the default S3A credential chain (fixed in Hadoop 3.5.0 via HADOOP-19535).
+
+        For IRSA (IAM Roles for Service Accounts) in EKS, we explicitly configure
+        WebIdentityTokenFileCredentialsProvider, which requires an HTTP client to make STS API calls.
+
+        This dependency provides the UrlConnectionHttpClient implementation needed by
+        WebIdentityTokenFileCredentialsProvider to assume roles via STS AssumeRoleWithWebIdentity.
+
+        Remove when upgrading to Hadoop 3.5+ or Spark 4.x with Hadoop 3.5+.
+      -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+      <version>${aws.java.sdk.v2.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.github.sbt.junit</groupId>
       <artifactId>jupiter-interface</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>9.2.0</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-spark-runtime-4.0_2.13</artifactId>
+      <version>${iceberg.version}</version>
+      <scope>runtime</scope>
+      <exclusions>
+        <!--
+          Defense in depth: iceberg-spark-runtime's transitive graph can pull in
+          software.amazon.awssdk:bundle at the version Iceberg was built against.
+          Exclude it so the only bundle that lands in pyspark/jars/ is the one our
+          own iceberg-aws-bundle (declared below) embeds. See BATCH-4042.
+        -->
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-aws-bundle</artifactId>
+      <version>${iceberg.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-aws</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <!--
+          Exclude hadoop-aws's transitive software.amazon.awssdk:bundle:2.24.6.
+          This is the root-pom-level hadoop-aws declaration (not the one inside
+          hadoop-cloud, which has its own exclusion). Both paths need explicit
+          exclusion because Maven's nearest-wins doesn't help when the BOM doesn't
+          manage the `bundle` artifact (see comment near `aws.java.sdk.v2.version`).
+          See BATCH-4042.
+        -->
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>
+      <!--
+        Import the AWS SDK v2 BOM so every software.amazon.awssdk:* artifact (the
+        ~400 modular sub-artifacts like utils/regions/auth, and anything pulled
+        in transitively via hadoop-aws or any other dep) resolves to a single, consistent
+        version. Without this, Maven's nearest-wins rule combined with directly-declared
+        modular AWS SDK deps (e.g. url-connection-client) could leave transitive AWS SDK
+        artifacts at older versions and produce a multi-version classpath at runtime —
+        the root cause of BATCH-4042 / PYSPARK_PY312_ISSUE.md.
+
+        Note: the AWS SDK v2 BOM does NOT include `software.amazon.awssdk:bundle`
+        (the uber-jar) in its managed list — empirically verified in dev17 build,
+        where modular AWS SDK artifacts resolved to ${aws.java.sdk.v2.version} but
+        `bundle` resolved to hadoop-aws's transitive 2.24.6. So we additionally
+        pin `bundle` explicitly below.
+      -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws.java.sdk.v2.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!--
+        Explicit pin for software.amazon.awssdk:bundle. The AWS SDK BOM above does not
+        manage this artifact (it's an uber-jar packaging, not a modular dev artifact),
+        so transitive resolution falls back to Maven's "nearest wins" rule. That rule
+        lets older versions (e.g. hadoop-aws-3.4.1's pinned 2.24.6) slip through when
+        no module directly declares bundle. Forcing the version here in
+        dependencyManagement is the simplest belt-and-suspenders fix and applies to
+        every child module regardless of which dep brings bundle transitively.
+        See BATCH-4042.
+      -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bundle</artifactId>
+        <version>${aws.java.sdk.v2.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
         <artifactId>spark-tags_${scala.binary.version}</artifactId>
@@ -2757,7 +2892,7 @@
               <arg>-feature</arg>
               <arg>-explaintypes</arg>
               <arg>-release</arg>
-              <arg>17</arg>
+              <arg>21</arg>
               <arg>-Wconf:any:e</arg>
               <arg>-Wconf:cat=deprecation:wv</arg>
               <arg>-Wunused:imports</arg>
@@ -3426,11 +3561,11 @@
       </modules>
     </profile>
 
+    <!-- INC-6440 / BATCH-4042: the hadoop-cloud module is now built by default (see
+         <modules> near the top of this pom). This profile is retained as a no-op so
+         existing invocations that still pass -Phadoop-cloud continue to resolve. -->
     <profile>
       <id>hadoop-cloud</id>
-      <modules>
-        <module>hadoop-cloud</module>
-      </modules>
     </profile>
 
     <profile>
