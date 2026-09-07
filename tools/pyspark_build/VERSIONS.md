@@ -50,6 +50,18 @@ Example section:
 
 <!-- Add new productive releases below, newest first. -->
 
+## 6
+
+**Spark version:** 4.0.1
+**Commit SHA:** 3a81563711536fca01ea093bdf5e5fb9b541a2ea
+
+**Changes:**
+- Rebased the Affirm patch set onto the real upstream `apache/spark v4.0.1` tag (previously on `v4.0.0`), pulling in all 133 upstream commits between the two releases. This includes SPARK-52259, which reverts the SPARK-49907 `ClassTag` context-bound change to `org.apache.spark.ml.param.Param[T]` that broke binary compatibility with precompiled third-party JVM ML libraries (XGBoost4j-Spark, SynapseML) — `NoSuchMethodError` at runtime on Spark 4.0.0. Also picks up Kafka 3.9.0→3.9.1 (SPARK-52316) and ORC 2.1.2→2.1.3 / ORC format 1.1.0→1.1.1 (SPARK-52691, SPARK-53326) among other upstream fixes; see the [Spark 4.0.1 release notes](https://spark.apache.org/releases/spark-release-4-0-1.html) for the full list.
+- Bumped `python/pyspark/version.py` to `2815!4.0.1+affirm.dev1`.
+- Updated the hardcoded `SPARK_VERSION` export in the Kubernetes `entrypoint.sh` from `4.0.0` to `4.0.1`.
+- Updated the bundled `kafka-clients` version comment in `assembly/pom.xml` from `3.9.0` to `3.9.1` to match the upstream Kafka bump (the `kafka.version` property itself was already correctly tracked; only the explanatory comment was stale).
+- No other Affirm-specific dependency pins (AWS SDK v2, Iceberg, Snowflake connector/JDBC, OpenLineage, MySQL driver, py4j) required changes — all validated against [`VERSIONS.md`](https://github.com/Affirm/spark/blob/pyspark-build-tool/tools/pyspark_build/VERSIONS.md) v1–v5 with zero regressions (see validation table above).
+
 ## 5
 
 **Spark version:** 4.0.0
